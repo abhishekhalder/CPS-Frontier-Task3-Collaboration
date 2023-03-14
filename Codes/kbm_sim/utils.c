@@ -45,6 +45,24 @@ double distance(double x1, double y1, double x2, double y2){
 }
 
 /*
+ * Gets index of nearest point on trajectory
+ */
+int get_nearest_ind(Env_KBM * env, double *wpts){
+  double curr_dist;
+  double min_dist = -1.0;
+  int min_ind = 0;
+
+  for(int i=0;i<TRAJ_LEN;i++){
+    curr_dist = distance(env->x, env->y, *(wpts+2*i), *(wpts+2*i+1));
+    if(min_dist < 0 || curr_dist < min_dist){
+      min_dist = curr_dist;
+      min_ind = i;
+    }
+  }
+
+  return min_ind;
+}
+/*
  * Read a trajectory, a file with the format
  * (double xpos) (double ypos) (double speed)
  *

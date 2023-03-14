@@ -7,6 +7,7 @@
  */
 #include "utils.h"
 #include "sim_config.h"
+#include "controllers_kbm/ctrl_mpc.h"
 #include "controllers_kbm/ctrl_pid_plus_stanley.h"
 
 Controllers controller_type = CONTROLLER_TYPE;
@@ -16,6 +17,9 @@ Controllers controller_type = CONTROLLER_TYPE;
  */
 void controller_kbm_init(Env_KBM * env, Cnt_Out * ctrl){
   switch (controller_type){
+    case CONTROLLER_MPC:
+      ctrl_mpc_init(env, ctrl);
+      break;
     case CONTROLLER_PID_PLUS_STANLEY:
     default:
       ctrl_pid_plus_stanley_init(env, ctrl);
@@ -27,6 +31,9 @@ void controller_kbm_init(Env_KBM * env, Cnt_Out * ctrl){
  */
 void controller_kbm_deinit(){
   switch (controller_type){
+    case CONTROLLER_MPC:
+      ctrl_mpc_deinit();
+      break;
     case CONTROLLER_PID_PLUS_STANLEY:
     default:
       ctrl_pid_plus_stanley_deinit();
@@ -41,6 +48,9 @@ void controller_kbm_deinit(){
  */
 void controller_kbm_update(Env_KBM * env, Cnt_Out * ctrl){
   switch (controller_type){
+    case CONTROLLER_MPC:
+      ctrl_mpc_update(env, ctrl);
+      break;
     case CONTROLLER_PID_PLUS_STANLEY:
     default:
       ctrl_pid_plus_stanley_update(env, ctrl);

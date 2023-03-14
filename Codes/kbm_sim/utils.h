@@ -5,6 +5,7 @@
  * Date  : 02-28-2023
  *
  */
+#include "sim_config.h"
 
 /*
  * Clip x to [-abs(lim), abs(lim)]
@@ -23,6 +24,11 @@ int normalize_angle(double * angle);
  * Compute distance between two points
  */
 double distance(double x1, double y1, double x2, double y2);
+
+/*
+ * Gets index of nearest point on trajectory
+ */
+int get_nearest_ind(Env_KBM * env, double *wpts);
 
 /*
  * Read a trajectory, a file with the format

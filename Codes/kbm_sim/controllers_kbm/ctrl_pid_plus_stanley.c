@@ -19,8 +19,6 @@ static Stanley lat;
 static double * waypoints;
 static double * speeds;
 
-
-static int get_nearest_ind(Env_KBM * env, double *wpts);
 static double get_desired_speed(double *spds, int min_ind);
 
 int ctrl_pid_plus_stanley_init(Env_KBM * env, Cnt_Out * ctrl){
@@ -84,22 +82,6 @@ int ctrl_pid_plus_stanley_deinit(){
   if(speeds) free(speeds);
 
   return 0;
-}
-
-static int get_nearest_ind(Env_KBM * env, double *wpts){
-  double curr_dist;
-  double min_dist = -1.0;
-  int min_ind = 0;
-
-  for(int i=0;i<TRAJ_LEN;i++){
-    curr_dist = distance(env->x, env->y, *(wpts+2*i), *(wpts+2*i+1));
-    if(min_dist < 0 || curr_dist < min_dist){
-      min_dist = curr_dist;
-      min_ind = i;
-    }
-  }
-
-  return min_ind;
 }
 
 static double get_desired_speed(double *spds, int min_ind){
