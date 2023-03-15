@@ -13,11 +13,11 @@
 /* MPC Reference Values */
 #define MPC_REF_CTE         0.0
 #define MPC_REF_EPSI        0.0
-#define MPC_REF_V           25.0
+#define MPC_REF_V           16.0
 
 /* MPC Costs */
 #define MPC_COST_CTE        3000
-#define MPC_COST_EPSI       500
+#define MPC_COST_EPSI       1000 // 500
 #define MPC_COST_V          200 // 1
 #define MPC_COST_DELTA      1
 #define MPC_COST_DIFF_DELTA 200
