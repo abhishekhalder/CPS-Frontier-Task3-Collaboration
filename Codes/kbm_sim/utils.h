@@ -8,6 +8,14 @@
 #include "sim_config.h"
 
 /*
+ * Blocking delay with millisecond precision
+ *
+ * @param ms the number of milliseconds to delay for
+ * @return 0 upon success
+ */
+int delay_ms(int ms);
+
+/*
  * Clip x to [-abs(lim), abs(lim)]
  *
  * @param x the variable to clip

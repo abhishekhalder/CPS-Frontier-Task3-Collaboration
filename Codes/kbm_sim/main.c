@@ -7,16 +7,20 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "sim_config.h"
 #include "environment_kbm.h"
 #include "controller_kbm.h"
+#include "utils.h"
 
 
 int main(){
 
   Env_KBM env;
   Cnt_Out ctrl;
+  clock_t start, end;
+  int looptime_ms;
   
   // Open file for logging
   FILE *fp = fopen(OUTFILE, "w");
@@ -27,6 +31,8 @@ int main(){
   int i=0;
   while( 1 ){
 
+    start = clock();
+
     // Run controller
     controller_kbm_update( &env, &ctrl );
     
@@ -34,11 +40,26 @@ int main(){
     env_kbm_update( &env, &ctrl );
     
 		// Log output
-		printf("[%d] x=%.2f y=%.2f yaw=%.2f v=%.2f\n", i, env.x, env.y, env.yaw, env.v);
-		fprintf(fp, "%f %f %f %f %f %f %f\n", DT*i, env.x, env.y, env.yaw, env.v, ctrl.throttle, ctrl.delta);
+		if(TERMLOG_EN) printf("[%d] x=%.2f y=%.2f yaw=%.2f v=%.2f\n", i, env.x, env.y, env.yaw, env.v);
+
+		if(FILELOG_EN) fprintf(fp, "%f %f %f %f %f %f %f\n", DT*i, env.x, env.y, env.yaw, env.v, ctrl.throttle, ctrl.delta);
 
     if( RUN_TIME != -1 && i > NUM_TIMESTEPS )
       break;
+
+    end = clock();
+    looptime_ms = (int)(((double)(end-start)) / CLOCKS_PER_SEC * 1000);
+    // printf("Control loop took %dms\n", looptime_ms);
+
+    // Delay
+    if(TS_DELAY_MS > 0){ // Naive delay
+      // printf("Naive delaying for %dms\n", TS_DELAY_MS);
+      delay_ms(TS_DELAY_MS);
+    }
+    else if(TS_DELAY_MS < 0 && looptime_ms < -1*TS_DELAY_MS){ // Account for controller execution time
+      printf("Delaying for %dms\n", -1*TS_DELAY_MS - looptime_ms);
+      delay_ms(-1*TS_DELAY_MS - looptime_ms);
+    }
 
     i++;
   }
@@ -46,6 +67,8 @@ int main(){
   controller_kbm_deinit();
 
   fclose(fp);
+
+  printf("(*) Simulation successfully run for %d timesteps. Terminating...\n", (int)NUM_TIMESTEPS);
 
   return 0;
 

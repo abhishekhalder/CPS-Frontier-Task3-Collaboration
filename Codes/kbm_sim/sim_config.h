@@ -9,6 +9,7 @@
 #define SIMCONF_H
 
 #define _USE_MATH_DEFINES
+#include <stdbool.h>
 #include <math.h>
 
 /* Simulation Settings ( ~ ) */
@@ -17,6 +18,9 @@
 #define NUM_TIMESTEPS (RUN_TIME/DT)
 #define OUTFILE       "run_data.txt"
 #define WAYPT_FILE    "racetrack_waypoints.txt"
+#define TERMLOG_EN     false
+#define FILELOG_EN     false
+#define TS_DELAY_MS    -100
 
 /* Controller Selection (controller_kbm.c) */
 typedef enum __Controllers {
@@ -24,8 +28,8 @@ typedef enum __Controllers {
   CONTROLLER_MPC
 } Controllers;
 extern Controllers controller_type;
-#define CONTROLLER_TYPE (Controllers)CONTROLLER_MPC
-// #define CONTROLLER_TYPE (Controllers)CONTROLLER_PID_PLUS_STANLEY
+// #define CONTROLLER_TYPE (Controllers)CONTROLLER_MPC
+#define CONTROLLER_TYPE (Controllers)CONTROLLER_PID_PLUS_STANLEY
 
 /* Environment Initialization (environment_kbm.c) */
 #define ENV_X_INIT    (double)-180.0

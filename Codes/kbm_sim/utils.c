@@ -8,7 +8,26 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "utils.h"
+
+/*
+ * Blocking delay with millisecond precision
+ *
+ * @param ms the number of milliseconds to delay for
+ * @return 0 upon success
+ */
+int delay_ms(int ms){
+  long pause;
+  clock_t now,then;
+
+  pause = ms*(CLOCKS_PER_SEC/1000);
+  now = then = clock();
+  while( (now-then) < pause )
+    now = clock();
+
+  return 0;
+}
 
 /*
  * Clip x to [-abs(lim), abs(lim)]

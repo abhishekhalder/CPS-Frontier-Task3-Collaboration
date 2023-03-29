@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -Wall -Wextra -pedantic -Wno-vla-parameter
+CFLAGS = -O2 -g -Wall -Wextra -pedantic -Wno-vla-parameter
 CLINKFLAGS_MPC =  -Wl,--rpath -Wl,/usr/local/lib
 LIBS_MPC = `PKG_CONFIG_PATH=/usr/local/lib/pkgconfig: pkg-config --libs ipopt` -lstdc++ -lm
 INCL_MPC = `PKG_CONFIG_PATH=/usr/local/lib/pkgconfig: pkg-config --cflags ipopt`
