@@ -422,11 +422,11 @@ int ctrl_mpc_update(Env_KBM * env, Cnt_Out * ctrl){
                            &eval_jac_g, &eval_h);
 
   if( !nlp ){
-    printf("(!) Error creaing IPOPT problem!\n");
+    if(TERMLOG_EN) printf("(!) Error creaing IPOPT problem!\n");
     return 1;
   }
   else
-    printf("(*) Created IPOPT problem.\n");
+    if(TERMLOG_EN) printf("(*) Created IPOPT problem.\n");
 
   // Set NLP options
   AddIpoptNumOption(nlp, "max_cpu_time", 60.0);
@@ -439,9 +439,11 @@ int ctrl_mpc_update(Env_KBM * env, Cnt_Out * ctrl){
   status = IpoptSolve(nlp, vars, NULL, &obj, NULL, NULL, NULL, NULL);
 
   // Print solution
-  printf("(*) Solved nlp [%d]. Optimal objective evaluation: %.2f\n", status, obj);
-  printf("(*) Optimal delta: %.2f\n", vars[delta_start]);
-  printf("(*) Optimal accel: %.2f\n", vars[a_start]);
+  if(TERMLOG_EN){
+    printf("(*) Solved nlp [%d]. Optimal objective evaluation: %.2f\n", status, obj);
+    printf("(*) Optimal delta: %.2f\n", vars[delta_start]);
+    printf("(*) Optimal accel: %.2f\n", vars[a_start]);
+  }
  
   // Set solution
   ctrl->delta = vars[delta_start];
