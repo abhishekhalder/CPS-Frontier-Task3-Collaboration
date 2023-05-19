@@ -19,7 +19,7 @@ const double dt = DT;
 
 // Set cost factors
 const int cost_cte_factor = MPC_COST_CTE;
-const int cost_epsi_factor = MPC_COST_EPSI; 
+const int cost_epsi_factor = MPC_COST_EPSI;
 const int cost_v_factor = MPC_COST_V;
 const int cost_current_delta_factor = MPC_COST_DELTA;
 const int cost_diff_delta_factor = MPC_COST_DIFF_DELTA;
@@ -31,14 +31,23 @@ double ref_cte = MPC_REF_CTE;
 double ref_epsi = MPC_REF_EPSI;
 double ref_v = MPC_REF_V;
 
-const size_t x_start = 0;
-const size_t y_start = x_start + N;
-const size_t psi_start = y_start + N;
-const size_t v_start = psi_start + N;
-const size_t cte_start = v_start + N;
-const size_t epsi_start = cte_start + N;
-const size_t delta_start = epsi_start + N;
-const size_t a_start = delta_start + N - 1;
+//const size_t x_start = 0;
+//const size_t y_start = x_start + N;
+//const size_t psi_start = y_start + N;
+//const size_t v_start = psi_start + N;
+//const size_t cte_start = v_start + N;
+//const size_t epsi_start = cte_start + N;
+//const size_t delta_start = epsi_start + N;
+//const size_t a_start = delta_start + N - 1;
+
+#define x_start     0
+#define y_start     (x_start + N)
+#define psi_start   (y_start + N)
+#define v_start     (psi_start + N)
+#define cte_start   (v_start + N)
+#define epsi_start  (cte_start + N)
+#define delta_start (epsi_start + N)
+#define a_start     (delta_start + N - 1)
 
 static double * waypoints;
 static double * speeds;

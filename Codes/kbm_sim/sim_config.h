@@ -13,14 +13,14 @@
 #include <math.h>
 
 /* Simulation Settings ( ~ ) */
-#define RUN_TIME      110 //150 //120
+#define RUN_TIME      		150 //120
 #define DT		        (double)0.1
 #define NUM_TIMESTEPS (RUN_TIME/DT)
 #define OUTFILE       "run_data.txt"
-#define WAYPT_FILE    "racetrack_waypoints.txt"
 #define TERMLOG_EN     false
 #define FILELOG_EN     false
-#define TS_DELAY_MS    -100
+//#define TS_DELAY_MS    -100
+#define TS_DELAY_MS    -500
 
 /* Controller Selection (controller_kbm.c) */
 typedef enum __Controllers {
@@ -28,24 +28,23 @@ typedef enum __Controllers {
   CONTROLLER_MPC
 } Controllers;
 extern Controllers controller_type;
-// #define CONTROLLER_TYPE (Controllers)CONTROLLER_MPC
-#define CONTROLLER_TYPE (Controllers)CONTROLLER_PID_PLUS_STANLEY
+#define CONTROLLER_TYPE (Controllers)CONTROLLER_MPC
+//#define CONTROLLER_TYPE (Controllers)CONTROLLER_PID_PLUS_STANLEY
 
-/* Environment Initialization (environment_kbm.c) */
+#define WAYPT_FILE    "racetrack_waypoints.txt"
+// Environment Initialization (environment_kbm.c) */
 #define ENV_X_INIT    (double)-180.0
 #define ENV_Y_INIT    (double)82
 #define ENV_YAW_INIT  (double)-5.0/8.0*M_PI
 #define ENV_V_INIT    (double)10.0
 #define ENV_LEN_WB    (double)3.0	// wheelbase 
-
-/* Controller (controller_kbm.c) */
-#define CTRL_MAX_THROTTLE (double)1.0
-#define CTRL_MAX_DELTA 	  (M_PI/4)
-
 /* Trajectory file */
 #define TRAJ_FILE "racetrack_waypoints.txt"
 #define TRAJ_LEN 1724
 
+/* Controller (controller_kbm.c) */
+#define CTRL_MAX_THROTTLE (double)1.0
+#define CTRL_MAX_DELTA 	  (M_PI/4)
 
 /* Environment Struct */
 typedef struct __KinematicBicycleModel{
