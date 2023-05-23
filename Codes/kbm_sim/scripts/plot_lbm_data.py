@@ -6,8 +6,8 @@
 #
 import matplotlib.pyplot as plt
 
-INFILE = "run_data.txt"
-TRAJ_FILE = "racetrack_waypoints.txt"
+INFILE = "../run_data.txt"
+TRAJ_FILE = "../sim_paths/racetrack_waypoints.txt"
 
 t = []
 x = []
@@ -100,7 +100,7 @@ axis1[3].set_title("Vehicle speed (m/s)")
 axis1[3].set_xlabel('t (s)')
 axis1[3].set_ylabel('v (m/s)')
 
-figure1.savefig('./plots/figure_1.png', dpi=300)
+figure1.savefig('../plots/figure_1.png', dpi=300)
 
 # 2nd figure, control outputs vs. time
 figure2, axis2 = plt.subplots(1,2, figsize=(2.5 * csize, 0.85 * csize))
@@ -116,7 +116,7 @@ axis2[1].set_title("Vehicle steering")
 axis2[1].set_xlabel('t (s)')
 axis2[1].set_ylabel('steering (rad/s)')
 
-figure2.savefig('./plots/figure_2.png', dpi=300)
+figure2.savefig('../plots/figure_2.png', dpi=300)
 
 # 3rd figure, desired vs. actual trajectory
 figure3, axis3 = plt.subplots(1,1, figsize=(1.5 * csize, 1.1 * csize))
@@ -126,7 +126,7 @@ axis3.plot(x_tr, y_tr, marker = 'None', c = 'b', linewidth=1)
 axis3.set_xlabel('x (m)')
 axis3.set_ylabel('y (m)')
 
-figure3.savefig('./plots/figure_3.png', dpi=300)
+figure3.savefig('../plots/figure_3.png', dpi=300)
 
 plt.show()
 exit()

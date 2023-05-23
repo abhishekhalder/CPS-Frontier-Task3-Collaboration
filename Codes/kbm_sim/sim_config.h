@@ -13,13 +13,13 @@
 #include <math.h>
 
 /* Simulation Settings ( ~ ) */
-#define RUN_TIME          0.3 //150 //120
+#define RUN_TIME          0.3 // 120
 #define DT		            (double)0.1
 #define NUM_TIMESTEPS     (RUN_TIME/DT)
 #define OUTFILE           "run_data.txt"
 #define SIM_CONFIGURABLE  "sim_config.cfg"
 #define TERMLOG_EN        false
-#define FILELOG_EN        false
+#define FILELOG_EN        true
 #define TS_DELAY_MS       -100
 
 /* Controller Selection (controller_kbm.c) */
