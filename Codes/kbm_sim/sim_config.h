@@ -19,8 +19,8 @@
 #define OUTFILE       "run_data.txt"
 #define TERMLOG_EN     false
 #define FILELOG_EN     false
-//#define TS_DELAY_MS    -100
-#define TS_DELAY_MS    -500
+#define TS_DELAY_MS    -100
+// #define TS_DELAY_MS    -500
 
 /* Controller Selection (controller_kbm.c) */
 typedef enum __Controllers {

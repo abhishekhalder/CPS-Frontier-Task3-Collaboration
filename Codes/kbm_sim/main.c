@@ -91,7 +91,7 @@ int main(){
     //looptime_ms = (int)(((double)(end-start)) / CLOCKS_PER_SEC * 1000);
     looptime_s = ((double)(end-start)) / CLOCKS_PER_SEC;
     total_time_s += looptime_s;
-    printf("%f %Lf\n", looptime_s, total_time_s);
+    // printf("[T_FLAG] %f %Lf\n", looptime_s, total_time_s);
 
     // Delay
     if(TS_DELAY_MS > 0){ // Naive delay

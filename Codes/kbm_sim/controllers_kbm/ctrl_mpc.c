@@ -438,7 +438,8 @@ int ctrl_mpc_update(Env_KBM * env, Cnt_Out * ctrl){
     if(TERMLOG_EN) printf("(*) Created IPOPT problem.\n");
 
   // Set NLP options
-  AddIpoptNumOption(nlp, "max_cpu_time", 60.0);
+  // AddIpoptNumOption(nlp, "max_cpu_time", 60.0);
+  AddIpoptNumOption(nlp, "max_cpu_time", 0.1);
   AddIpoptIntOption(nlp, "print_level", 0); // verbosity
   AddIpoptIntOption(nlp, "max_iter", 3000); 
   AddIpoptStrOption(nlp, "jacobian_approximation", "finite-difference-values"); // So that we need not implement eval_jac_g
