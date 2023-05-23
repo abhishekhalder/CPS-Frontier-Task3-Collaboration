@@ -429,11 +429,13 @@ int ctrl_mpc_update(Env_KBM * env, Cnt_Out * ctrl){
     if(TERMLOG_EN) printf("(*) Created IPOPT problem.\n");
 
   // Set NLP options
-  AddIpoptNumOption(nlp, "max_cpu_time", 60.0);
+  // AddIpoptNumOption(nlp, "max_cpu_time", 60.0);
+  AddIpoptNumOption(nlp, "max_cpu_time", (float)(abs(TS_DELAY_MS))/1000.0);
   AddIpoptIntOption(nlp, "print_level", 0); // verbosity
   AddIpoptIntOption(nlp, "max_iter", 3000); 
   AddIpoptStrOption(nlp, "jacobian_approximation", "finite-difference-values"); // So that we need not implement eval_jac_g
   AddIpoptStrOption(nlp, "hessian_approximation", "limited-memory"); // So that we need not implement eval_h
+  // printf("(DBG) Set max solve time to [%.3f].\n", (float)(abs(TS_DELAY_MS))/1000.0);
 
   // Solve problem
   status = IpoptSolve(nlp, vars, NULL, &obj, NULL, NULL, NULL, NULL);
