@@ -7,6 +7,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "sim_config.h"
@@ -14,6 +15,11 @@
 #include "controller_kbm.h"
 #include "utils.h"
 
+/* External variables */
+char TRAJ_FILE[50] = TRAJ_FILE_DEFAULT;
+int TRAJ_LEN = TRAJ_LEN_DEFAULT;
+
+int load_sim_params( void );
 
 int main(){
 
@@ -21,7 +27,13 @@ int main(){
   Cnt_Out ctrl;
   clock_t start, end;
   int looptime_ms;
-  
+
+  // Load any configurable parameters
+  if( load_sim_params() ){
+    printf("(-) Failed loading simulation parameters from %s. Terminating...\n", SIM_CONFIGURABLE);
+    return 1;
+  }
+
   // Open file for logging
   FILE *fp = fopen(OUTFILE, "w");
 
@@ -35,10 +47,10 @@ int main(){
 
     // Run controller
     controller_kbm_update( &env, &ctrl );
-    
+
     // Update environment
     env_kbm_update( &env, &ctrl );
-    
+
 		// Log output
 		if(TERMLOG_EN) printf("[%d] x=%.2f y=%.2f yaw=%.2f v=%.2f\n", i, env.x, env.y, env.yaw, env.v);
 
@@ -63,7 +75,7 @@ int main(){
 
     i++;
   }
-  
+
   controller_kbm_deinit();
 
   fclose(fp);
@@ -72,5 +84,34 @@ int main(){
 
   return 0;
 
+}
+
+/*
+ * Load configurable parameters from config file
+ *
+ * @return 0 on success, else 1
+ */
+int load_sim_params( void ){
+  FILE *fp = fopen(SIM_CONFIGURABLE, "r");
+  char * line = NULL;
+  size_t len = 0;
+  ssize_t read;
+
+  if( !fp ) return 1;
+
+  // Read the trajectory/waypoints file (currently only configurable)
+  read = getline(&line, &len, fp);
+  if(read != -1){
+    memcpy(TRAJ_FILE, line, read-1);
+  }
+  read = getline(&line, &len, fp);
+  if(read != -1){
+    TRAJ_LEN = (int) strtol(line, NULL, 10);
+  }
+
+  fclose(fp);
+  if(line) free(line);
+
+  return 0;
 }
 
