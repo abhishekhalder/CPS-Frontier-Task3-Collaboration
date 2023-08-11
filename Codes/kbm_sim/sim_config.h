@@ -28,8 +28,8 @@ typedef enum __Controllers {
   CONTROLLER_MPC
 } Controllers;
 extern Controllers controller_type;
-#define CONTROLLER_TYPE (Controllers)CONTROLLER_MPC
-// #define CONTROLLER_TYPE (Controllers)CONTROLLER_PID_PLUS_STANLEY
+// #define CONTROLLER_TYPE (Controllers)CONTROLLER_MPC
+#define CONTROLLER_TYPE (Controllers)CONTROLLER_PID_PLUS_STANLEY
 
 /* Environment Initialization (environment_kbm.c) */
 #define ENV_X_INIT    (double)1 // -180.0

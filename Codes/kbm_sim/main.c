@@ -33,7 +33,7 @@ int main(){
     printf("(-) Failed loading simulation parameters from %s. Terminating...\n", SIM_CONFIGURABLE);
     return 1;
   }
-  
+
   // Open file for logging
   FILE *fp = fopen(OUTFILE, "w");
 
@@ -47,10 +47,10 @@ int main(){
 
     // Run controller
     controller_kbm_update( &env, &ctrl );
-    
+
     // Update environment
     env_kbm_update( &env, &ctrl );
-    
+
 		// Log output
 		if(TERMLOG_EN) printf("[%d] x=%.2f y=%.2f yaw=%.2f v=%.2f\n", i, env.x, env.y, env.yaw, env.v);
 
@@ -75,7 +75,7 @@ int main(){
 
     i++;
   }
-  
+
   controller_kbm_deinit();
 
   fclose(fp);
