@@ -1,0 +1,16 @@
+
+MCF SPEC CPU version 1.11
+Copyright (c) 1998-2000 Zuse Institut Berlin (ZIB)
+Copyright (c) 2000-2002 Andreas Loebel & ZIB
+Copyright (c) 2003-2005 Andreas Loebel
+Copyright (c) 2006-2010 Dres. Loebel, Borndoerfer & Weider GbR (LBW)
+
+single threaded
+nodes                      : 5985
+active arcs                : 102404
+simplex iterations         : 17965
+objective value            : 59810179481
+new implicit arcs          : 4000000
+checksum                   : 59810179481
+runtime = 44 seconds
+done

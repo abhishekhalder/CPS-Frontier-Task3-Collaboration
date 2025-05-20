@@ -1,0 +1,55 @@
+%% Description
+%
+% We find the optimal (max-likelihood) path tree on a set of distributions
+%
+%==========================================================================
+close all; clear; clc;
+set(groot,'defaultAxesTickLabelInterpreter','latex');  
+set(groot,'defaulttextinterpreter','latex');
+set(groot,'defaultLegendInterpreter','latex');
+rng(0);
+
+
+%% Problem parameters
+%==========================================================================
+num_locs = 20;    % the number of scattered data points per distribution
+num_dist =  3;    % number of distributions to generate
+epsilon  =  0.1; % entropic regularization parameter
+
+
+%% Generate Distributions
+%==========================================================================
+locs = cell(num_dist,1);
+dist = cell(num_dist,1);
+
+for i=1:num_dist
+    locs{i} = mvnrnd(i-1/10,1/10,num_locs);
+    dist{i} = mvnpdf(locs{i},i-1/10,1/10);
+end
+
+
+%% For each permutation of vertices, solve path-structured MSBP
+%==========================================================================
+orders = perms(1:num_dist);
+M = cell(size(orders(:,1),1),1);
+costs = cell(size(orders(:,1),1),1);
+
+for i=1:numel(M)
+    ord = orders(i,:);
+    p_locs = locs; for j=1:num_dist; p_locs{j} = locs{ord(j)}; end
+    p_dist = locs; for j=1:num_dist; p_dist{j} = dist{ord(j)}; end
+    
+    C = cell(num_dist-1,1);
+    K = cell(num_dist-1,1);
+    % Generate cost matrices
+    for j=1:num_dist-1
+        C{j} = pdist2(p_locs{j}, p_locs{j+1});
+        K{j} = exp(-C{j}/epsilon);
+    end
+    
+    % Solve path-structured MSBP on the permuted distributions
+    u = solve_path_sbp(K, p_dist, num_dist, num_locs);
+
+    % Evaluate total transport cost
+    costs{i} = evaluate_path_transport_cost(C,K,u,num_dist,num_locs,epsilon)
+end

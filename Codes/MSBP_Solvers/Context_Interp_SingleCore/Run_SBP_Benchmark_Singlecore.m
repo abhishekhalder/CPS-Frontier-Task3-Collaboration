@@ -1,0 +1,451 @@
+%% Description
+%
+% We solve a Series-parallel (SP) tracking MSBP with Robert's synthetic
+% data. In this file we assume that CPUs are dependent only on their own
+% context, thereby reducing n.
+%
+%==========================================================================
+close all; clear; clc;
+set(groot,'defaultAxesTickLabelInterpreter','latex');  
+set(groot,'defaulttextinterpreter','latex');
+set(groot,'defaultLegendInterpreter','latex');
+rng(0);
+
+%% Problem parameters
+%==========================================================================
+BENCHMARK_NAME = "dedup";
+%==========================================================================
+dfile_pfix = sprintf("../%s_outfiles/marginals/%s_",BENCHMARK_NAME,BENCHMARK_NAME);
+dfile_sfix = "_3dim.txt";
+% out_dir    = "./data_out/";
+%==========================================================================
+% VALID_CACHE = bitshift(1,1:20)-1;
+% VALID_MEMBW = (1:20) * 72;
+VALID_CACHE = 1:20; % 1:20;
+VALID_MEMBW = 1:20; % 1:20;
+%==========================================================================
+% CTXT_SET    = VALID_CACHE.'+(1i*VALID_MEMBW); CTXT_SET(2:end-1,2:end-1) = 0;
+CTXT_SET    = VALID_CACHE.'+(1i*VALID_MEMBW);
+for i=VALID_CACHE
+    if( mod(i,5) ~= 0 & i ~= 1 )
+        CTXT_SET(:,i) = 0;
+        CTXT_SET(i,:) = 0;
+    end
+end
+CTXT_SET    = setdiff(unique(CTXT_SET),[0]);
+%==========================================================================
+marg_times    = 0:0.05:1;
+taus          = 0.0:0.01:marg_times(end)-0.01;  % Times at which to interpolate
+% taus          = 0.1:0.05:0.5;  % Times at which to interpolate
+% marg_times    = 0:0.05:1;
+% taus          = 0.0:0.01:marg_times(end)-0.01;  % Times at which to interpolate
+num_Timesteps = numel(marg_times);	% The number of time steps to solve over
+num_CPUs      = 1;                  % Do not change this
+nSample       = 10;                % The number of profiles
+n             = numel(CTXT_SET) * nSample;
+%==========================================================================
+numMarginal_Time = num_Timesteps;
+numMarginal_CPU  = num_CPUs;
+%==========================================================================
+% Default data scaling parameters
+instr_scale     = 1e-10;
+llcreq_scale    = 1e-8;
+llcmiss_scale   = 1e-8;
+c1_scale        = 9.5368e-08;
+c2_scale        = 6.9444e-05;
+
+autoscale       = true;                       % If false, use defaults above
+scaled_maxval   = 0.1;                        % If autoscale==true, all components of data scaled to [0,scaled_maxval]
+
+epsilon = 0.1;                                  % entropic regularization parameter
+% epsilon = 0.05;                                  % entropic regularization parameter
+%==========================================================================
+
+
+%% Load marginal data
+%==========================================================================
+rawD            = cell(numMarginal_Time,num_CPUs);
+scaling_factors = cell(numMarginal_Time,numMarginal_CPU);
+mu              = cell(numMarginal_Time,numMarginal_CPU);
+locs            = cell(numMarginal_Time,numMarginal_CPU);
+C               = cell(numMarginal_Time,numMarginal_CPU);
+K               = cell(numMarginal_Time-1,numMarginal_CPU);
+for k=1:numMarginal_Time
+    for j=1:numMarginal_CPU
+        rawD{k,j} = zeros(n, 3+2);
+        for i=1:numel(CTXT_SET)
+            % Get context
+            ctxt = [real(CTXT_SET(i)), imag(CTXT_SET(i))];
+            ctxt_s = [bitshift(1,real(CTXT_SET(i)))-1, imag(CTXT_SET(i))*72];
+            
+            % Read marginal file
+            curr_file = sprintf("%s%d_%d_MARG%d%s",dfile_pfix,ctxt_s(1),ctxt_s(2),k-1,dfile_sfix);
+            rawD_1C = importdata(curr_file);
+            
+            % Pad or truncate the data as necessary
+            if( numel(rawD_1C) == 0 )
+                rawD_1C = zeros(nSample,3);
+            elseif( size(rawD_1C,1) < nSample )
+                rawD_1C = padarray(rawD_1C,nSample-size(rawD_1C,1),0,'post')
+            else
+                rawD_1C = rawD_1C(1:nSample,:);
+            end
+            
+            % Affix context to \xi
+            rawD_1C = [rawD_1C ones(nSample,1).*ctxt];
+            
+            % Append to marginal
+            blk = 1 + (i-1)*nSample;
+            rawD{k,j}(blk:blk+nSample-1,:) = rawD_1C;
+        end
+        % Perform autoscaling if enabled
+        if( autoscale )
+            if( max(rawD{k,j}(:,1)) ~= 0 ) instr_scale   = scaled_maxval / max(rawD{k,j}(:,1)); else instr_scale   = 1; end
+            if( max(rawD{k,j}(:,2)) ~= 0 ) llcreq_scale  = scaled_maxval / max(rawD{k,j}(:,2)); else llcreq_scale  = 1; end
+            if( max(rawD{k,j}(:,3)) ~= 0 ) llcmiss_scale = scaled_maxval / max(rawD{k,j}(:,3)); else llcmiss_scale = 1; end
+            if( max(rawD{k,j}(:,4)) ~= 0 ) c1_scale      = scaled_maxval / max(rawD{k,j}(:,4)); else c1_scale      = 1; end
+            if( max(rawD{k,j}(:,5)) ~= 0 ) c2_scale      = scaled_maxval / max(rawD{k,j}(:,5)); else c2_scale      = 1; end
+            fprintf("====Autoscaling Parameters====\n");
+            fprintf('instr_scale   = %f\n', instr_scale);
+            fprintf('llcreq_scale  = %f\n', llcreq_scale);
+            fprintf('llcmiss_scale = %f\n', llcmiss_scale);
+            fprintf('c1_scale      = %f\n', c1_scale);
+            fprintf('c2_scale      = %f\n', c2_scale);
+            fprintf("==============================\n\n");
+        end
+        
+        % Scale the data for stability of the MSBP solver
+        rawD{k,j}(:,1) = rawD{k,j}(:,1) * instr_scale;
+        rawD{k,j}(:,2) = rawD{k,j}(:,2) * llcreq_scale;
+        rawD{k,j}(:,3) = rawD{k,j}(:,3) * llcmiss_scale;
+        rawD{k,j}(:,4) = rawD{k,j}(:,4) * c1_scale;
+        rawD{k,j}(:,5) = rawD{k,j}(:,5) * c2_scale;
+        
+        scaling_factors{k,j} = [instr_scale llcreq_scale llcmiss_scale c1_scale c2_scale];
+        
+        locs{k,j} = [rawD{k,j}(:,1), rawD{k,j}(:,2), rawD{k,j}(:,3), rawD{k,j}(:,4), rawD{k,j}(:,5)];
+        
+        mu{k,j} = (1/n) * ones(n,1);
+    end
+end
+%==========================================================================
+
+
+% Generate cost matrices
+%==========================================================================
+cost_scales = [1 1 1 20 20];
+% cost_scales = [1 1 1 0.01 0.01];
+for k=1:numMarginal_Time-1
+    for j=1:numMarginal_CPU
+        if k==1
+            % C{k,j} = pdist2(locs1,1}, locs{2,j});
+            C{k,j} = pdist2(locs{1,1}, locs{2,j}, 'seuclidean', cost_scales);
+        elseif k==numMarginal_Time-1
+            % C{k,j} = pdist2(locs{k,j}, locs{k+1,1});
+            C{k,j} = pdist2(locs{k,j}, locs{k+1,1}, 'seuclidean', cost_scales);
+        else
+            % C{k,j} = pdist2(locs{k,j}, locs{k+1,j});
+            C{k,j} = pdist2(locs{k,j}, locs{k+1,j}, 'seuclidean', cost_scales);
+        end
+        K{k,j} = exp(-C{k,j}/epsilon);
+    end
+end
+%==========================================================================
+
+
+%% Solve MSBP
+%==========================================================================
+maxIter = 10000; tol = 1e-13; maxtol = 1e5;
+u = cell(numMarginal_Time,numMarginal_CPU);
+err = cell(numMarginal_Time,numMarginal_CPU);
+ptimes = [];
+
+for k=1:numMarginal_Time
+    if k==1 || k==numMarginal_Time
+        u{k,1} = rand(n,1);
+        err{k,1} = { []; [] };
+    else
+        for j=1:numMarginal_CPU
+            u{k,j} = rand(n,1);
+            err{k,j} = { []; [] };
+        end
+    end
+end
+
+iter_idx = 1;
+t        = 1;
+j        = 1;
+tic;
+while iter_idx <= maxIter
+    fprintf('(Iter,t,j) = (%d, %d, %d)\n', iter_idx, t, j);
+    
+    u_old = u{t,j};
+    
+    % Calculate projection
+    % tic;
+    Proj = Proj1_scattered(t, j, numMarginal_Time, numMarginal_CPU, K, u);
+    % ptimes(end+1) = toc;
+    % Update iteration
+    u{t,j} = u{t,j} .* mu{t,j} ./ Proj;
+    
+    % Calculate error
+    err{t,j}{1}(end+1) = iter_idx;
+    err{t,j}{2}(end+1) = max(1e-16, HilbertProjectiveMetric(u{t,j},u_old));
+    
+    disp(['Err ',num2str(err{t,j}{2}(end))])
+    max_err = err{t,j}{2}(end);
+    if (iter_idx >= numMarginal_Time*numMarginal_CPU)
+        for k=1:numMarginal_Time
+            if k==1 || k==numMarginal_Time
+                max_err = max(max_err, err{k,1}{2}(end));
+            else
+                for l=1:numMarginal_CPU
+                    max_err = max(max_err, err{k,l}{2}(end));
+                end
+            end
+        end
+    else
+        max_err = 228;
+    end
+    disp(['Max_Err ',num2str(max_err)])                                                                                                                                                                                                                    
+    
+    % check convergence in Hilbert metric
+    if (max_err < tol)
+        break;
+    elseif( isinf(err{t,j}{2}(end)) || isnan(err{t,j}{2}(end)))
+        fprintf('Error: NaN or Inf detected in Hilbert metric on iteration (t,j)=(%d,%d). Stopping...\n', t, j);
+        break;
+    else
+        iter_idx = iter_idx+1;  
+        if j == numMarginal_CPU || (t==1 || t==numMarginal_Time)
+            j = 1;
+        else
+            j = j + 1;
+        end
+        if j == 1
+            t = mod(t, numMarginal_Time) + 1;
+        end
+    end
+end
+comptime_recursion = toc
+% histogram(ptimes, 30, 'facealpha', 0.3, 'edgecolor', 'none');
+
+%% Find the transport maps between adjacent marginals
+%==========================================================================
+M = cell(numMarginal_Time-1,numMarginal_CPU);
+Msums = zeros(numMarginal_Time-1,numMarginal_CPU);
+
+for k=1:numMarginal_Time-1
+    for j=1:numMarginal_CPU
+        if k==1
+            M{k,j} = Proj2_scattered([1,1], [2,j], numMarginal_Time, numMarginal_CPU, K, u);
+        elseif k==numMarginal_Time-1
+            M{k,j} = Proj2_scattered([k,j], [k+1,1], numMarginal_Time, numMarginal_CPU, K, u);
+        else
+            M{k,j} = Proj2_scattered([k,j], [k+1,j], numMarginal_Time, numMarginal_CPU, K, u);
+        end
+        
+        Msums(k,j) = sum(M{k,j},"all");
+        disp(sum(M{k,j},"all"));
+    end
+end
+
+% %% Figure 1 : Plot convergence in Hilbert metric
+% %==========================================================================
+% figure(1)
+% for k=1:numMarginal_Time
+% 	semilogy(err{k,1}{1}, err{k,1}{2}, 'LineWidth',2);
+%     hold on;
+%     if k>1 && k<numMarginal_Time
+%         for l=2:numMarginal_CPU
+%             semilogy(err{k,l}{1}, err{k,l}{2}, 'LineWidth',2);
+%             % writecell(err{k,l}, out_dir + "f1_err" + num2str((k-1)*num_CPUs + (l-1)) + ".txt");
+%         end
+%     end
+% end
+% xlabel('iteration index $j$','FontSize',30)
+% ylabel('Error','FontSize',30)
+% yline(tol);
+% hold off;
+% %==========================================================================
+
+
+%% Rescale the data back to original values
+for k=1:numMarginal_Time
+    for j=1:numMarginal_CPU
+%         rawD{k,j}(:,1) = rawD{k,j}(:,1) / scaling_factors{k,j}(1);
+%         rawD{k,j}(:,2) = rawD{k,j}(:,2) / scaling_factors{k,j}(2);
+%         rawD{k,j}(:,3) = rawD{k,j}(:,3) / scaling_factors{k,j}(3);
+        rawD{k,j}(:,4) = rawD{k,j}(:,4) / scaling_factors{k,j}(4);
+        rawD{k,j}(:,5) = rawD{k,j}(:,5) / scaling_factors{k,j}(5);
+    end
+end
+
+
+%% Figure 2 : Plot interpolated marginals at specified times
+%==========================================================================
+num_interp = numel(taus);
+r = 1e-3;
+res = 0.01; gridxi = 0:res:scaled_maxval; gridc = VALID_CACHE; % (!) Grid parameters
+[x1,x2,x3]    = ndgrid(gridxi,gridxi,gridxi);
+[x4,x5]       = ndgrid(gridc,gridc);
+x1 = x1(:,:)';
+x2 = x2(:,:)';
+x3 = x3(:,:)';
+x4 = x4(:,:)';
+x5 = x5(:,:)';
+pts_xi = [x1(:) x2(:) x3(:)];
+pts_c  = [x4(:) x5(:)];
+[x1,x2,x3,x4,x5] = ndgrid(gridxi,gridxi,gridxi , gridc,gridc);
+x1 = x1(:,:)';
+x2 = x2(:,:)';
+x3 = x3(:,:)';
+x4 = x4(:,:)';
+x5 = x5(:,:)';
+pts    = [x1(:) x2(:) x3(:) x4(:) x5(:)];
+
+marginals        = cell(num_interp, num_CPUs);
+marginals_stats  = cell(num_interp, num_CPUs);
+marginals_scales = cell(num_interp, num_CPUs);
+
+ilocs    = cell(num_interp, num_CPUs);
+imags    = cell(num_interp, num_CPUs);
+weights  = cell(num_interp, num_CPUs);
+
+nS       = n;% 500;                             % Number of downsamples
+
+dlocs    = cell(num_interp, num_CPUs);      % Downsampled locs
+dmags    = cell(num_interp, num_CPUs);      % Downsampled mags
+dweights = cell(num_interp, num_CPUs);      % Downsampled weights (for graphing)
+
+for k=1:numel(taus)
+    tic;
+    fprintf('k=%d\n', k);
+        
+    tau = taus(k);
+    % Find correct M to use
+    M_ind = find(marg_times>tau,1)-1;
+    % Find bounds in interpolation interval
+    tau_int_b = marg_times(M_ind);
+    tau_int_e = marg_times(M_ind+1);
+    tau_scaled = (tau-tau_int_b) / (tau_int_e-tau_int_b);
+    
+    for p=1:num_CPUs
+        ilocs{k,p}    = zeros(n^2,5);
+        imags{k,p}    = zeros(n^2,1);
+        weights{k,p}  = zeros(n^2,1);
+        dlocs{k,p}    = zeros(nS,5);
+        dmags{k,p}    = zeros(nS,1);
+        dweights{k,p} = zeros(nS,1);
+        M_int = M{M_ind,p};
+        
+        % Perform interpolation
+        % =====================
+        for i=1:n
+            for j=1:n
+                ilocs{k,p}((i-1)*n+j,:) = (1-tau_scaled)*rawD{M_ind,p}(i,:)+tau_scaled*rawD{M_ind+1,p}(j,:);
+                imags{k,p}((i-1)*n+j)   = M_int(i,j);
+            end
+        end
+        marginals_scales{k,p} = (1-tau_scaled)*scaling_factors{M_ind,p}+tau_scaled*scaling_factors{M_ind+1,p};
+        % =====================
+        
+        % Perform downsamping
+        % ===================
+        t_locs = ilocs{k,p};
+        t_mags = imags{k,p};
+        for i=1:nS
+            % disp(i);
+            dlocs{k,p}(i,:) = t_locs(1,:);
+            dmags{k,p}(i) = t_mags(1);
+            t_locs(1,:) = [];
+            t_mags(1) = [];
+            [minValues,cIs] = mink(vecnorm(dlocs{k,p}(i,:)-t_locs,2,2), n^2/nS-1);
+            for j=1:(n^2/nS-1)
+                dlocs{k,p}(i,:) = (dmags{k,p}(i)*dlocs{k,p}(i,:) + t_mags(cIs(j)).*t_locs(cIs(j),:)) ...
+                    / (dmags{k,p}(i)+t_mags(cIs(j)));
+                dmags{k,p}(i) = dmags{k,p}(i) + t_mags(cIs(j));
+            end
+            t_locs(cIs,:) = [];
+            t_mags(cIs)   = [];
+        end
+        for j=1:nS
+            dweights{k,p}(j) = sum( (vecnorm(dlocs{k,p}(j,:)-dlocs{k,p},2,2) < r) .* dmags{k,p} );
+        end
+        dweights{k,p} = dweights{k,p} / nS;
+        % ===================
+
+        % Perform gridding
+        % ================
+        sigma = [];
+        sigma = std(dlocs{k,p},0,1);
+        bw = sigma * (4/((4+2)*size(dlocs{k,p},1)))^(1/(411+4)); bw(bw==0)=0.01; % zero bandwidth causes issues
+        marg_fulldim = mvksdensity(dlocs{k,p},pts,'Bandwidth',bw);
+        % ================
+        
+        % Compute 'denominator' of conditional probability
+        % marg_ctx = get_context_marg_singlecore(gridc,gridc,pts,marg_fulldim,size(gridc,2));
+        
+        % Find distribution of \xi conditioned on c
+        marg_c = cell(length(gridc),length(gridc));
+        marg_c_stats = cell(length(gridc),length(gridc));
+        for c1=gridc
+            for c2=gridc
+                marg_atc = get_xi_marg_singlecore(gridxi,gridxi,gridxi,[c1,c2],pts,marg_fulldim,size(gridxi,2));
+                marg_c{c1,c2} = marg_atc / numel(CTXT_SET); %marg_ctx(c1,c2);!
+                
+                % Dirty mean calculation
+                marg_c_mean = 0;
+                for i=1:numel(gridxi)
+                    for j=1:numel(gridxi)
+                        for kk=1:numel(gridxi)
+                            loc = [gridxi(i), gridxi(j), gridxi(kk)];
+                            
+                            marg_c_mean = marg_c_mean + marg_c{c1,c2}(i,j,kk)*loc;
+                        end
+                    end
+                end
+                marg_c_mean = marg_c_mean / sum(marg_c{c1,c2},"all");
+                
+                % Alternative - report highest probability value
+                [~,I] = max(marg_c{c1,c2},[],"all","linear");
+                [I1,I2,I3] = ind2sub(size(marg_c{c1,c2}),I);
+                marg_c_std = [gridxi(I1), gridxi(I2), gridxi(I3)];
+                
+                % marg_c_mean = mean(pts_xi.'*reshape(marg_c{c},numel(gridxi)^3,1)/sum(marg_c{c},"all"),2).';
+                % marg_c_std  = std(pts_xi,reshape(marg_c{c1,c2},numel(gridxi)^3,1),1);
+                % Statistics of marginal
+                marg_c_stats{c1,c2} = [marg_c_mean ; marg_c_std];
+            end
+        end
+        
+        marginals{k,p} = marg_c;
+        marginals_stats{k,p} = marg_c_stats;
+    end
+    toc
+end
+
+%% Generate synthetic marginals
+%==========================================================================
+out_dir    = sprintf("./data_out/%s_synth_profiles/", BENCHMARK_NAME);
+synth_profiles = cell(numel(gridc),numel(gridc));
+for c1=gridc
+    for c2=gridc
+        
+        %for j=1:numel(pts_c(:,1))
+        profile = zeros(numel(taus),7);
+        for k=1:numel(taus)
+            mean_t = marginals_stats{k,1}{c1,c2}(1,:)./marginals_scales{k,1}(1:3);
+            std_t  = marginals_stats{k,1}{c1,c2}(2,:)./marginals_scales{k,1}(1:3);
+            profile(k,:) = [taus(k), mean_t, std_t];
+        end
+        synth_profiles{c1,c2} = profile;
+        writematrix(synth_profiles{c1,c2}, out_dir + BENCHMARK_NAME + "-synth_c" + num2str(bitshift(1,c1)-1) + "_" + num2str(c2*72) + ".txt");
+        %end
+    end
+end
+
+%% Export marginals and needful information
+save("data_out/MSBP_solution/MSBPsol_1015_iCPUs.mat","marginals", ...
+     "marginals_stats", "marginals_scales", "pts", "pts_xi", "pts_c", ...
+     "gridxi", "gridc", "taus", "instr_scale", "llcreq_scale", "llcmiss_scale");
